@@ -1,35 +1,29 @@
 import pickle
-import numpy as np
 import pandas as pd
-import shap
 
-model = pickle.load(open("models/model.pkl", "rb"))
-features = pickle.load(open("models/features.pkl", "rb"))
+MODEL_PATH = "models/model.pkl"
+ENCODERS_PATH = "models/encoders.pkl"
+FEATURES_PATH = "models/features.pkl"
 
-explainer = shap.TreeExplainer(model)
+model = pickle.load(open(MODEL_PATH, "rb"))
+encoders = pickle.load(open(ENCODERS_PATH, "rb"))
+features = pickle.load(open(FEATURES_PATH, "rb"))
 
 
-def predict_employee(data: dict):
+def predict_employee(input_dict):
+    df = pd.DataFrame([input_dict])
 
-    df = pd.DataFrame([data])
+    for col, le in encoders.items():
+        if col in df.columns:
+            df[col] = df[col].astype(str)
+            df[col] = df[col].apply(
+                lambda x: le.transform([x])[0] if x in le.classes_ else -1
+            )
 
-    df["OverTime"] = df["OverTime"].map({"Yes": 1, "No": 0})
+    # Ensure same feature order
+    df = df.reindex(columns=features, fill_value=0)
 
-    df = df[features].fillna(0)
+    prediction = model.predict(df)[0]
+    probability = model.predict_proba(df)[0][1]
 
-    prob = model.predict_proba(df)[0][1]
-    pred = int(prob > 0.5)
-
-    risk_score = round(prob * 100, 2)
-
-    # ================= SHAP FIX =================
-    shap_values = explainer.shap_values(df)
-
-    # binary classification handling
-    if isinstance(shap_values, list):
-        shap_values = shap_values[1]
-
-    # convert to numpy + flatten properly
-    importances = np.array(shap_values[0]).flatten()
-
-    return pred, risk_score, importances, features
+    return prediction, probability

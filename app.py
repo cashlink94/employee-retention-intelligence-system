@@ -1,138 +1,66 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+import pickle
+import matplotlib.pyplot as plt
 
 from src.predict import predict_employee
 
-st.set_page_config(
-    page_title="HR Decision Intelligence System",
-    layout="wide"
-)
+# Load model for feature importance
+model = pickle.load(open("models/model.pkl", "rb"))
 
-# ================= HEADER =================
-st.markdown("""
-# 🏢 HR Decision Intelligence System
-### AI-powered Employee Attrition Prediction with Explainable AI
-""")
+st.set_page_config(page_title="Employee Retention AI", layout="wide")
 
-st.markdown("---")
+st.title("Employee Retention Intelligence System")
+st.markdown("### AI-powered employee attrition prediction")
 
-left, right = st.columns([1, 2], gap="large")
+col1, col2 = st.columns(2)
 
-# ================= INPUT =================
-with left:
-    st.markdown("## 📥 Employee Profile")
+with col1:
+    st.subheader("Employee Details")
 
     age = st.slider("Age", 18, 60, 30)
     daily_rate = st.number_input("Daily Rate", 100, 1500, 500)
     distance = st.slider("Distance From Home", 1, 30, 5)
+
+with col2:
+    st.subheader("Work Information")
+
     income = st.number_input("Monthly Income", 1000, 20000, 5000)
     years = st.slider("Years at Company", 0, 40, 3)
 
-    overtime = st.selectbox("OverTime", ["No", "Yes"])
-    job_satisfaction = st.slider("Job Satisfaction", 1, 4, 3)
-    work_life = st.slider("Work Life Balance", 1, 4, 3)
 
-    run = st.button("🚀 Run AI Risk Analysis")
+if st.button("Predict Attrition Risk"):
 
-# ================= OUTPUT =================
-with right:
-    st.markdown("## 📊 AI Decision Dashboard")
+    input_data = {
+        "Age": age,
+        "DailyRate": daily_rate,
+        "DistanceFromHome": distance,
+        "MonthlyIncome": income,
+        "YearsAtCompany": years
+    }
 
-    if run:
+    prediction, prob = predict_employee(input_data)
 
-        # -------- INPUT PACK --------
-        input_data = {
-            "Age": age,
-            "DailyRate": daily_rate,
-            "DistanceFromHome": distance,
-            "MonthlyIncome": income,
-            "YearsAtCompany": years,
-            "OverTime": overtime,
-            "JobSatisfaction": job_satisfaction,
-            "WorkLifeBalance": work_life
-        }
+    st.subheader("Prediction Result")
 
-        # -------- PREDICTION --------
-        pred, risk_score, importances, features = predict_employee(input_data)
-
-        # ================= RISK SCORE =================
-        st.markdown("### 🎯 Risk Score (0–100)")
-
-        st.metric(
-            label="Attrition Risk",
-            value=f"{risk_score}"
-        )
-
-        if risk_score > 60:
-            st.error("🚨 High Risk Employee")
-        elif risk_score > 30:
-            st.warning("⚠ Medium Risk Employee")
-        else:
-            st.success("✅ Low Risk Employee")
-
-        st.markdown("---")
-
-        # ================= SHAP IMPORTANCE FIX =================
-        st.markdown("### 🧠 AI Explanation (SHAP-based Importance)")
-
-        importances = np.array(importances).flatten()
-
-        df_imp = pd.DataFrame({
-            "Feature": features,
-            "Importance": importances[:len(features)]
-        }).sort_values(by="Importance", ascending=False)
-
-        st.bar_chart(df_imp.set_index("Feature"))
-
-        st.markdown("---")
-
-        # ================= HR INSIGHTS =================
-        st.markdown("### 💡 HR Insights")
-
-        insights = []
-
-        if income < 3000:
-            insights.append("Low income is a strong attrition driver")
-
-        if overtime == "Yes":
-            insights.append("Overtime increases burnout risk significantly")
-
-        if job_satisfaction <= 2:
-            insights.append("Low job satisfaction is critical risk factor")
-
-        if work_life <= 2:
-            insights.append("Poor work-life balance increases attrition")
-
-        if distance > 20:
-            insights.append("Long commute increases turnover risk")
-
-        for i in insights:
-            st.warning(f"• {i}")
-
-        st.markdown("---")
-
-        # ================= HR RECOMMENDATION =================
-        st.markdown("### 🧭 HR Recommendation")
-
-        if risk_score > 60:
-            st.error("Immediate intervention required")
-        elif risk_score > 30:
-            st.warning("Monitor employee closely")
-        else:
-            st.success("No action required")
-
-        st.markdown("---")
-
-        # ================= AI SUMMARY =================
-        st.markdown("### 🧠 AI Summary")
-
-        if risk_score > 60:
-            st.info("High-risk employee based on multiple behavioral signals.")
-        elif risk_score > 30:
-            st.info("Moderate risk employee requiring attention.")
-        else:
-            st.info("Low-risk employee with stable profile.")
-
+    if prediction == 1:
+        st.error(f"⚠ High Risk of Leaving ({prob:.2%})")
     else:
-        st.info("👈 Enter employee details and run AI analysis")
+        st.success(f"✅ Low Risk ({prob:.2%})")
+
+    # Feature Importance
+    st.subheader("Model Insights")
+
+    importances = model.feature_importances_
+    features = model.feature_names_in_
+
+    importance_df = pd.DataFrame({
+        "Feature": features,
+        "Importance": importances
+    }).sort_values(by="Importance", ascending=False).head(10)
+
+    fig, ax = plt.subplots()
+    ax.barh(importance_df["Feature"], importance_df["Importance"])
+    ax.invert_yaxis()
+
+    st.pyplot(fig)

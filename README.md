@@ -1,47 +1,30 @@
-# 🏢 Employee Retention Intelligence System
+# Employee Retention Intelligence System
 
-## 🧠 Overview
-An AI-powered HR analytics system that predicts employee attrition risk and provides explainable insights to support data-driven HR decision-making.
+## Overview
+This project predicts whether an employee is likely to leave a company using machine learning.
 
----
-
-## 🚀 Live Features
-- 🎯 Employee Attrition Risk Score (0–100)
-- 🧠 Explainable AI using SHAP
-- 📊 Feature importance visualization
-- 💡 HR recommendation engine
-- ⚡ Real-time Streamlit dashboard
+It demonstrates a complete ML pipeline:
+- Data preprocessing
+- Model training
+- Prediction system
+- Interactive web app
 
 ---
 
-## 🧱 Tech Stack
+## Features
+- Predict employee attrition risk
+- Probability score output
+- Clean and simple UI using Streamlit
+- End-to-end ML workflow
+
+---
+
+## Tech Stack
 - Python
 - Pandas
-- NumPy
 - Scikit-learn
 - Streamlit
-- SHAP
 
 ---
 
-## 🧠 Machine Learning Approach
-- Random Forest Classifier
-- Feature engineering on HR dataset
-- Encoded categorical variables (OverTime, etc.)
-- Balanced training strategy for attrition classes
-
----
-
-## 📊 System Workflow
-1. HR inputs employee data
-2. ML model predicts attrition probability
-3. SHAP explains key contributing factors
-4. System generates HR recommendations
-
----
-
-## 🚀 Run Locally
-
-### 1. Install dependencies
-```bash
-pip install -r requirements.txt
+## Project Structure
