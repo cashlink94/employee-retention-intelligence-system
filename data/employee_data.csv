@@ -1,0 +1,11 @@
+Age,DailyRate,DistanceFromHome,MonthlyIncome,YearsAtCompany,Department,OverTime,Attrition
+34,800,5,5000,3,Sales,Yes,No
+45,1200,10,7000,10,R&D,No,No
+29,400,20,3000,1,HR,Yes,Yes
+41,1000,7,6500,8,Sales,No,No
+25,300,15,2500,2,HR,Yes,Yes
+38,900,3,6000,6,R&D,No,No
+30,500,12,4000,4,Sales,Yes,Yes
+50,1500,2,9000,20,R&D,No,No
+28,450,18,3200,2,HR,Yes,Yes
+36,850,6,5500,5,Sales,No,No

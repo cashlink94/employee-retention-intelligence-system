@@ -1,66 +1,121 @@
-import os
-import pickle
 import pandas as pd
+import numpy as np
+import joblib
+import os
 
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score
 
-from preprocess import load_data, split_data
+# ===================== LOAD DATA (AUTO-DETECT) ===================== #
+def load_data():
+    print("Loading data...")
 
-DATA_PATH = "data/HR_data.csv"
-MODEL_PATH = "models/model.pkl"
-ENCODERS_PATH = "models/encoders.pkl"
-FEATURES_PATH = "models/features.pkl"
+    possible_paths = [
+        "data/employee_data.csv",
+        "employee_data.csv",
+        "data/HR.csv",
+        "HR.csv"
+    ]
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            print(f"✅ Found dataset: {path}")
+            return pd.read_csv(path)
+
+    raise FileNotFoundError(
+        "❌ No dataset found.\n"
+        "Put your CSV file in:\n"
+        " - project root OR\n"
+        " - data/ folder\n"
+    )
 
 
-def encode_features(X_train, X_test):
-    encoders = {}
-    X_train = X_train.copy()
-    X_test = X_test.copy()
+# ===================== PREPROCESS ===================== #
+def preprocess_data(df):
+    print("Preprocessing data...")
 
-    cat_cols = X_train.select_dtypes(include=["object"]).columns
+    # Target
+    y = df["Attrition"].map({"Yes": 1, "No": 0})
 
-    for col in cat_cols:
-        le = LabelEncoder()
+    # Features
+    X = df.drop("Attrition", axis=1)
 
-        X_train[col] = X_train[col].astype(str)
-        X_test[col] = X_test[col].astype(str)
+    # Columns
+    num_cols = X.select_dtypes(include=["int64", "float64"]).columns
+    cat_cols = X.select_dtypes(include=["object", "string"]).columns
 
-        le.fit(X_train[col])
+    # Encoder (FIXED)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", "passthrough", num_cols),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), cat_cols)
+        ]
+    )
 
-        X_train[col] = le.transform(X_train[col])
+    return X, y, preprocessor
 
-        X_test[col] = X_test[col].apply(
-            lambda x: le.transform([x])[0] if x in le.classes_ else -1
+
+# ===================== TRAIN MODEL ===================== #
+def train_model(X, y, preprocessor):
+    print("Splitting data...")
+
+    if len(y) < 10:
+        print("⚠️ Dataset too small → skipping split")
+        X_train, X_test, y_train, y_test = X, X, y, y
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=0.2,
+            random_state=42,
+            stratify=y
         )
 
-        encoders[col] = le
+    print("Training model...")
 
-    return X_train, X_test, encoders
+    classifier = RandomForestClassifier(
+        n_estimators=100,
+        random_state=42
+    )
 
+    model = Pipeline([
+        ("preprocess", preprocessor),
+        ("classifier", classifier)
+    ])
 
-def main():
-    df = load_data(DATA_PATH)
-
-    X_train, X_test, y_train, y_test = split_data(df)
-
-    X_train, X_test, encoders = encode_features(X_train, X_test)
-
-    model = RandomForestClassifier(n_estimators=200, random_state=42)
     model.fit(X_train, y_train)
 
     preds = model.predict(X_test)
+    acc = accuracy_score(y_test, preds)
 
-    print("Accuracy:", accuracy_score(y_test, preds))
+    print(f"\nAccuracy: {acc:.4f}")
 
+    return model
+
+
+# ===================== SAVE ===================== #
+def save_model(model):
     os.makedirs("models", exist_ok=True)
+    joblib.dump(model, "models/model.pkl")
+    print("✅ Model saved successfully!")
 
-    pickle.dump(model, open(MODEL_PATH, "wb"))
-    pickle.dump(encoders, open(ENCODERS_PATH, "wb"))
-    pickle.dump(X_train.columns.tolist(), open(FEATURES_PATH, "wb"))
 
-    print("Model + encoders + features saved!")
+# ===================== MAIN ===================== #
+def main():
+    df = load_data()
+
+    print("\nClass distribution:")
+    print(df["Attrition"].value_counts())
+
+    X, y, preprocessor = preprocess_data(df)
+
+    model = train_model(X, y, preprocessor)
+
+    save_model(model)
 
 
 if __name__ == "__main__":
